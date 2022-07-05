@@ -1,0 +1,179 @@
+* Gestione dello stallo
+
+Esempio
+	* Un sistema ha due unità nastro
+	* P_1 e P_2 ognuno in possesso di una unità e
+          ognuno ha bisogno di una seconda unità 
+
+Un modello di sto sistema
+abbiamo varie risorse R_1 R_2 R_3...
+abbiamo W_i istanze della risorsa R_i
+condizione necessarie ma non sufficiente
+condizioni di stallo
+	1. Mutua esclusione, un solo processo alla
+           volta può usare la risorsa
+	2. Possesso e attesa, un processo ha una
+           risorsa e ne sta chiedendo un'altra
+	3. No prelazione, una risorsa può essere
+           rilasciata solo volontariamente dal
+           processo quando ha finito di usarla
+	4. Attesa circolare, P_0 aspetta P_1 che
+           aspetta P_2 che aspetta ... che aspetta P_0
+
+In generale basta che una di queste non sia vera per
+fare in modo che non si possa avere uno stallo
+
+** Modello grafo
+Vediamo un modello del nostro sistema, abbiamo un
+grafo di allocazione delle risorse
+
+V è partizionato in due inisiemi
+
+	* P = P_1, P_2, P_3, P_4... i processi
+	* R = R_1, R_2, R_3, R_4... le risorse
+
+Gli archi sono fatti in questo modo	  
+	* P_i \to R_j voglio la risorsa
+	* R_i \to P_i mi serve la risorsa
+
+Se abbiamo un ciclo abbiamo stallo allora?
+eh invece no
+Posso avere un ciclo ma la risorsa desiderata ha più
+istanze, di cui alcune sono fuori da cicli
+
+	* Se il grafo non ha cicli, non abbiamo attese
+          circolari, quindi non abbiamo stallo
+	* Se il grafo a ciclo
+		* Se hai una sola istanza per risorsa
+                  \to stallo
+
+* Gestione stallo		  
+Tre i metodi per prevenire uno stallo hai:
+	* Prevenire o evitare
+	* Permettere che il sistema entri in stallo e
+          ripristinare lo stallo quando lo trovi
+	* Fottersene e demandare il problema dello
+          stallo ad altri livelli dell'applicazione
+
+** Prevenire	  
+Per prevenire lo stallo proviamo a prevenire alcune
+delle condizioni necessarie prese prima
+
+abbiamo un processo e un tipo di risorsa con 4 istanze
+P_i chiede un'istanza di R_j, P_i possiede un'istanza
+di R_j, esempio
+
+	* 
+	* 
+	* Togliere vincolo di prelazione, il processo
+          può però ricominciare solo una volta riavute
+          tutte le risorse di cui ha bisogno
+	* Attesa circolare - posso imporre un
+          ordinamento totale di tutti i tipi di
+          risorsa e imporre che ogni processo richeda
+          le risorse in ordine crescente, la cosa
+          potrebbe non essere sempre possibile
+	  
+** Evitare lo stallo	  
+Creiamo uno *stato sicuro*
+	* Necessita che ogni processo dichiari il
+          numero massimo di risorse di ogni tipo di
+          cui avrebbe bisogno
+	* 
+	* Lo stato di allocazione è ...
+
+come si definisce lo *stato sicuro*
+un sistema è in uno stato sicuro se esiste una
+sequenza sicura di tutti i processi, se tutti i
+processi riescono a terminare
+la sequanza P_1, P_2, ... è *sicura* se tutte le
+risorse di che cazzo non lo so...\par.
+
+se è in uno stato sicuro allora il sistema non è in
+stallo, se teniamo un sistema in uno stato
+costantemente sicuro.\par.
+
+se non esiste una sequenza sicura allora tra i
+possibili stati non sicuri vi è quello in cui siamo in
+deadlock, uno stato non sicuro non è necessariamente
+uno stato non sicuro, ma uno stato di deadlock è
+necessariamente non sicuro.\par.
+
+** Un algoritmo con un grafo
+vediamo un metodo per evitare lo stallo quando abbiamo
+un solo tipo di risorsa, arco di rivendicazione, P_i
+\to R_j, il processo i potrebbe volere la risorsa j,
+quando P_i ottiene R_j allora l'arco diventa un arco
+di assegnazione 
+
+se un'arco di rivendicazione da dei cicli quando
+diventa  un'arco di assegnazione allora non gli
+permetti di ottenerla, o qualcosa del genere, questo
+funziona solo quando boh
+
+** Algoritmo delle Bachiere
+	* Vettore degli available, elemento i-esimo
+          availabe ci dice quanta roba è disponibile
+          della risorsa i.
+	* Max
+	* Allocation
+	* Need
+
+bla bla bla bla è inefficiente bla bla bla...
+
+** Rilevamento
+Se sta cosa avviene una volta al mese allra rallentare
+il sistema costantemente per evitare che accada una
+volta al mese è un pochino una stronzata
+
+*** Selezione e neutralizzazione del processo colpevole
+
+* Gestione della memoria
+il sistema operativo gestisce tanti cosi, uno di sti
+cosi è la memoria.
+	* Il sistema operativo assegna la memoria ai
+          processi
+	* Bisogno di isolare la memoria di un processo
+          dalla memoria di un altro processi
+	  * ad esempio in MS-DOS questa mancanza
+            portava a varii puttanai
+	* Fai usare ai processi solo la memoria di cui
+          il processo ha bisogno in quel momento,
+          vedremo che questo è gestito dalla memoria
+          virtual
+	* Far condividere (in modo controllato)
+          memoria a varii processi, se ho varie
+          istanze di uno stesso processo preferirei
+          non avere una copia diversa della memoria da
+          sincronizzare tra tutti sti processi
+
+** Swapping
+un processo non ha bisogno della memoria che sta
+usando, la memoria non usata viene copiata sul disco e
+tolta da quel processo in modo da poter essere usata
+anche da altri processi
+	* Backing store
+	* Roll out, roll in
+
+Bla bla bla...
+	* Indirizzo logico, generato dalla cpu, detto
+          anche indirizzo virtuale
+	* Indirizzo fisico, indirizzo visto dall'unità
+          di memoria
+
+I processi vedono indirizzi logici, e usano indirizzi
+logici, il sistema operativo e l'hardware convertono
+questi indirizzi.
+Principalmente dall'hardware, visto che se fosse
+costantemente con codice kernel va a vedere che ci
+metti tre anni a finire stammerda
+L'hardware usa la la cosiddetta Memeory-Management
+Unit (MMU)
+
+** Tecniche per gestione della memoria
+
+Abbiamo ad esempio
+	* Allocazione contigua, roba storica
+	* Segmentazione
+	* Paginazione
+	* Segmentazione paginata

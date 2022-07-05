@@ -1,0 +1,133 @@
+scheduling linux 2.4 a epoche
+
+a epoche a ogni coso quanto di tempo che può consumare
+quando hai terminato il quanto la tua epoca è finita
+aumentando la durata del quanto di quanto rimasto nell'epoca precedente boh
+
+cerca di avvantaggiare processi interattivi e che quidni fanno tanto io
+
+un task può variare il suo nice value
+i valori negativi aumentano la priorità, fattibile solo dal root
+
+un utente normale può solo diminuire la priorità di un processo
+
+il problema di sto scheduling è che scansiona tutti i task per vedere quale fare, quindi O(n), se hai migliaia di processi sono cazzi, poi hai un'unica coda, cosa non molto agevole e doveva essere sincronizzata tra tutti i core della cpu ed erano ancora più cazzi
+
+scheduler O(1) riduce il tempo di scelta su N task a O(1), in tempo costante
+
+come viene fatto questo?
+sono impostati 140 livelli di priorità
+da 0 a 139 (120 + il nice)
+con 0 prioirtà massima
+ogni priorità ha una sua coda
+
+lo scheduler in O(1) lo scheduler va alla priorità massima che non è vuota
+succede qualcosa
+
+si scambiano le code expired e active, e riandale
+
+i task io bound vengono premiati, i task cpu bound sono puniti, incrementando e decrementando la priorità.
+
+il bonus viene rapportato lo sleep_avg rispetto al bonus massimo
+
+il timeslice dipende dalla priorità statica del task
+
+erano anche presente interactivity credits
+ottenuti quando task aspetta per tanto tempo
+persi quando usa tanta cpu
+usati per non far perdere il bonus solo perchè un task io usa occasionalmente tanta cpu
+
+nel caso multi core ogni cpu ha la sua coda, i processi sono poi spostati tra le varie cpu se una cpu ne ha troppi
+
+la gestione delle code e dei bonus e altre cose rendevano il codice abbastanza contorto
+
+
+il cpu associa a ogni task non un real-time ma un virtual-runtime, tempo di uso della cpu
+
+per decidere quale task ready viene fatto seleziona quello con virtual-runtime minore, quello che ha usato meno cpu
+
+questo viene fatto in modo O(log n) usando alberi rosso neri, che restano bilanciati
+
+il virtual runtime viene aggiornato in base al nice value, il tempo effettivo della cpu viene moltiplicato per (5/4) elevato al nice value
+quidni il bambino ritardato ha priorità che resta alta anche se usa la cpu come un mentecatto
+nice value tra -20 e 19
+
+cpu più veloce per task ad alta priorità
+cpu più lenta per task a bassa priorità
+
+il tempo assegnato dipende anch'esso dal nice value
+peso = 1024/((5/4)^nice)
+
+trovi lo scheduling period
+poi trovi il tempo da assegnare ogni task in modo che la somma di tutti sia lo scheduling period e ogni task abbia tempo proporzionale al propio peso
+
+questo è il modo in cui funziona il cfs(completely fair scheduler)
+
+quando hanno introdotto lo scheduling è stato riorganizzato il codice per l'algoritmo e si è definta un interfaccia per poter avere puù algoritmi di scheduling
+
+
+
+
+Ok, ora torniamo a scazzare thread
+
+accessoa dati condivisi porta molti, MOLTI problemi nello scheduling
+dati incosistenti dovuti a scheduling con prelazione in monoprocessore
+accesso parallelo allo stesso dato da parte di più thread per cpu multiprocessore
+
+supponiamo di avere un thread che crea dati e un thread che consuma dati
+
+diciamo che vi è una variabile count di quanti dati sono rimasti, incrementata alla creazoine dei dati, decrementata al consumo dei dati
+
+thread produttore aspetta se il buffer di file prodotti e pieno, poi mette il coso prodotto
+thread consumatore aspetta, fa cosa, consooma, e decrementa il count
+
+se un cambio di thread avviene quando il count non è stato sincronizzato col valore corrente allora so' cazzi, il codice è in uno stato non definito, il cielo cade, i morti risorgono, paul erdos non vuole firmare il tuo foglio!
+
+oppure hai un conto bancario in cui prelevi o depositi
+prelievo:
+  leggi stato
+  decrementa
+  scrivi stato
+
+deposito:
+  leggi stato
+  incrementa
+  scrivi stato
+
+se leggo uno stato veccio, sticazzi, aggiorno male, scrivo male, stato in uscita no previsto, bestemmia
+
+soluzione a problemi simili, problemi della sezione critica
+condizioni sufficienti per essere una soluzione sono queste
+se risolvi sti problemi hai risolto il problema della sezione critica
+non ho ancora capito se race condition vuol dire condizioni di gara o di razza
+magari entrambe
+
+mutua esclusione: mutex
+
+Progresso: nessun processo nessa selezione critica e qualcuno vuole entrare, scegli uno che entra
+
+attesa limitata
+
+esiste un limite del numero di volte nel numero di volte in cui altri processi entrano nella loro sezione critica dopo che un processo che che cazzo
+
+una proma soluzione è la soluzione di Peterson
+soluzoine per due processi
+usa le istruzioni LOAD e STORE, si assuma che siamo atomiche e non iterrompibili
+
+due processi condividono int turn e bool flag
+turn dice di chi è il turno
+l'array falg fa un boh
+
+come sono implementati? fanno il seguente
+dai il turno all'altro, aspetta intanto che tocca a lui
+ok, tocca a me, so che l'altro mi aspetterà quindi faccio la sezione critica senza problemi
+e boh
+fa una mutua esclusione? sì, per una flag di cui mi sono scordato di scrivere perchè sono uno stronzo
+
+puoi avere l'agortimo del formaio
+
+puoi usare una variabile lock, TestAndSet
+soddisfa robe? ja... ma non il problema dell'attesa illimitata
+
+Soluzoine usando swap
+

@@ -1,0 +1,7 @@
+#!/usr/bin/bash
+rm filosofi/filosofi.zip
+rm lettori-scrittori/lettori-scrittori.zip
+rm prodcons/prodcons.zip
+rm thread-counter/thread-counter.zip
+rm thread-counter-sync-sem/thread-counter-sync-sem.zip
+rm thread-peterson/thread-peterson.zip

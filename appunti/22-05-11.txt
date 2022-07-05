@@ -1,0 +1,164 @@
+semafori hanno wait e signal
+
+Semaforo mutex = 1
+
+mutex.wait()
+sezione critica
+mutex.signal(), credo
+
+prima di usare la risorsa il thread fa una wait per essere sicuro che ci sia quella risorsa
+dopo la sezione critica il thread fa una signal
+
+problema, si può avere situazione di attesa indefinita/ stallo
+P0 aspetta P1 e P1 aspetta P0, nessuno
+
+P0 waits S e wait Q
+P1 wait Q e wait Q
+
+entrambi riescono ad andare avanti, ma entrambi hanno bisogno della risorsa dell'altro per fare la signal, ma entrambi hanno bisogno che l'altro abbia la risorsa dell'altro per fare signal, quindi nessuna delle due risorse può essere rilasciata, quindi nessuno dei due riesce a uscire dalla wait, interlock, shit
+
+PROBLEMA DI INVERSIONE DI PRIORITà
+
+abbiamo tre processi a priorità diversa H L M
+
+L sta usando una risorsa R, ci sta lavorando, la rilascierà tra un po'
+arriva un processo a priorità H che vuole usare R, ma R è ancora usata da L
+ora arriva il processo a priorità M, ma ha una priorità maggiore di L
+
+M prelaziona L, quindi finchè va avanti M, L resta bloccato, ora H, che voleva la risorsa di L, viene bloccato da M
+
+soluzione estrema, avere solo 2 livelli di priorità
+
+soluzione generale:
+portare la priorità di L alla stessa durata di H finchè L sta usando la risorsa richiesta da H, visto che il compimento di L è ora necessario al processo figo bello prioritario H (protocollo di eredità delle priorità)
+
+ora vediamo i semfori in Java
+
+classe Semaphore (in java.util.concurrent)
+acquire () e release() simili a
+wait()     e signal()
+
+nella documentazione si parla di permessi, semaforo contatore
+
+nella versione Java il semaforo può essere fair o unfair
+fair allora le chiamate in attesa, i tread in attesa sono sccodati in ordine FIFO, se unfair la cosa non viene garantita, più veloci ma non è garantito l'ordine in cui i thread accederanno. Da meno problemi per cose tipo stallo
+il costruttore prende un argomento bool per sapere se è fair o unfair, di default è unfair
+
+si possono chiamare l'aquire o la release con un parametro numerico che dice di quanto aumentare o diminuire il conto, quante risorse chiederò.
+se ho un semaforo che vale 3 e il processo ne chiede 5 allora il processo non è che prende 3 e poi ne aspetta altre 2, ne vuole 5 a botta
+
+tryAcquire() ritrona true se il premesso è disponibile, false altrimenti
+fa acquisizione unfair
+
+vi è anche tryAcquire() con timeout e boh
+
+schema di uso
+si mette la sezione critica in un try finally, questo ci garantisce che se nella sezione critica vi è un'eccezione allora la risorsa viene rilasciata
+
+Classici problemi di sincornizzazione
+
+
+produttore consumatore con memoria limitata
+ho un buffer di N elementi, i prodottori mettono nel buffer, i consumatori prendono dal buffer. nel buffer può starci un numero limitato di roba
+
+semaforo mutex inizializzato a 1
+il produttore trova il buffer pieno
+il consumatore trova il buffer vuoto
+
+il semaforo di vuote inizializzato a N, indica quante posizioni del buffer sono vuote
+
+vediamo il processo produttore
+do{
+	//produce elemento
+	wait(vuota) //decrementa il numero di posizioni vuote, se può farlo
+	wait(mutex) //evita che produttori e consumatori accedano insieme a buff
+	//codesta è una sezione critica
+	//aggiunge elemento al buffer
+	signal(mutex)
+	signal(piene) //le posizioni piene sono aumentate
+}
+
+posso avere più produttori che vogliono creare, possono creare in contemporanea, ma possono accedre al buffer solo uno alla volta
+problema dei cinque filosofi
+
+processo consumatore
+do{
+	wait(piene) //decrementa n.posizioni piene e attende se <=0
+	wait(mutex) //mutua esculsione tra produttori e consumatori
+	//mutua esclusione che modifichino entrambi contemporaneamente il buffer
+
+	//toglie elemento dal buffer
+
+	signal(mutex) //ho finito di modificare il buffer, modificatelo pure
+	signal(vuote)
+
+	//consooma la risorsa
+}
+
+questa metodologia è basata sulla strana ipotesi che la memoria sia limitata, non funziona per pura matematica di memoria illimitata
+
+PROBLEMA DEI LETTORI E SCRITTORI
+lettori: leggono i dati ma non effettuano modifiche
+scrittori: leggono e scrivono i dati
+
+se il lettore sta leggendo e revisionanado la roba allora i lettori scrivono
+il sito è in manutenzione
+
+semaforo inizializzato a 1 indica se si può fare la scrittura
+un numero intero che indica quanti lettori
+
+processo scrittore
+
+do {
+    wait(scrittura)
+    //lege et scribe
+    signal(scrittura)
+}
+
+
+processo lettore
+
+do {
+    wait (mutex)
+    nLettori ++; //siamo in una sezione critica
+    if (nLettori == 1)
+        wait(scrittura) //aspetta in caso ci sia una scrittura in corso
+    //questo blocca altri gli altri lettori
+    //il mutex non perdona, porcatroia
+    
+    signal(mutex)
+    // esebue lettura
+    wait(mutex)
+    nLettori --:
+    if (nLettori == 0)
+       	 signal (scrittura) //sveglia un eventuale processo scrittore
+    signal(mutex)
+}
+
+problema dei 5 filosofi
+abbiamo 5 filosofi che sono a un tavolo
+piatto di riso centrale
+ci sono solo 5 bacchette, condivise coi vicini
+i filosofi devono mangiare e pensare, per mangiare ha bisogno di entrambe le bacchette nella sua vicinanza
+
+bisogna accedere alle risorse condivise, le principalmente bacchette 
+
+wait(bacchetta [i] );
+wait(bacchetta [i+1] % 5);
+//mangia
+signal(bacchetta[i]);
+signal(bacchetta [i+1] % 5);
+//pensa
+repeat
+
+problema, metti che hanno tutti la bacchetta alla loro destra, o cazzo l'altra, ma ce l'ha qualcuno che mi sta aspettando! ma lo sto aspettando io! indirettamente ma comunque treno di attesa circolare
+
+come si risolve coi semafori? stare attenti
+esiste un caso in cui può essere stallo
+
+doppio wait separato porta allo stallo visto che puoi incastrare i 5 processi tra loro stessi con lo spazio tra i due wait
+
+signal e wait porta a più processi nella sezione critica
+
+all'inteno di una sezione critica vi è wait con un semaforo
+

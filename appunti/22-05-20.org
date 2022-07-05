@@ -1,0 +1,409 @@
+* Scopi
+isolare
+efficenza
+ad esempio i container fanno quello
+
+* Allocazione contigua
+cpu \to logical addres, nei limiti?
+n \to trap: addressing error
+y \to accedi
+
+lascia buco, mette il blocco
+	* first fit, più veloce
+	* best fit
+	* worst fit
+
+** Frammentazione esterna
+
+il poroblema frammentazione esterna, può esistere
+abbasanza spazio per soddifsare la richiesta ma non è
+contiguo.
+
+** Frammentazione interna
+
+** Compattazione
+riordinare tutti i buchi in un solo buco, in modo da
+poter avere un gigabuco per tutti i nostri bisogni di
+spazio libero, processo molto oneroso.
+
+* Segmentazione
+
+questi segmenti non sono ordinati, un'altra cosa che
+puoi fare è un'allocazoine dinamica
+
+user space fatto da una serie di segmenti, allocato
+nei varii segmenti di memoria disponibili.
+il sistema operativo decide dove vanno i varii
+segmenti.\par
+
+i segmenti logici contengono numero di segmento e
+offset dal segmenti, il registro di base della tabella
+dei segmenti punta alla tabella dei segmenti
+
+la condivisione è facile fare condivisione a due
+processi diversi
+
+allocazione, ogni segmento può essere allocato con una
+strategia first fit o best fit.
+si può avere frammentazione esterna\par
+
+protezione, ogni riga della tabella può contenere un
+bit di validazione, privilegi di lettura, scrittura, o
+esecuzione (chmod?)
+
+un esempio di segmentazione\par
+
+architettura di traduzione degli indirizzi
+CPU crea n. segmento e offset, del segmento trovi
+	* quest'offset ci sta?
+	* se ci sta a quale indirizzo fisico
+          corrisponde?
+
+se p1 e p2 hanno stesso codice, che fa gli stessi
+accessi, ma gli sono allocati segmenti diversi, o che
+è, allora il sistema può evitare di allocare la memoria
+codice, visto che ha già allocato quel codice.
+
+segmentazione
+	* pro: più flessibile
+	* con: frammentazione esterna
+
+con risolto con *Paginazione
+
+* Paginazione
+divide la memoria fisica in blocchi di lunghezza fissa
+chiamati frame, di dimensione pari a qualche potenza
+del 2 (tra 512 e 8192 byte).
+
+Imposta una tabella delle pagine per tradurre indirizzi
+logici in fisici.
+
+Schema comunque soggetto a frammentazione esterna.\par
+
+es. a pag 356 o quanto è per noi mortali\par
+
+
+vediamo un mmu che deve fare sta cosa.
+	1. parte indica n.pagina e parte offset
+	2. da n. pagina vai nella tabella e trova coso
+           fisico
+	3. metti coso fisico insieme a offset nella
+           pagine
+	4. ecco il tuo indirizzo fisico da chiedere
+           alla memoria
+
+** Implementazione tablella delle pagine
+tabella delle pagine è tenuta in memoria, troppo grossa
+per essere messa internamente al processore o roba
+simile
+Ogni accesso in memoria richiede accesso alla tabella e
+accesso alla memoria?
+Nah, usamo una cache, una memoria asscoiativa
+Translation Lookup Buffer, che fa una ricerca parallela
+a cui dai il numero pagina e se trova il numero della
+pagina nella sua memoria è decisamente più veloce della
+ram.
+
+quindi CPU \to TLB\par
+TLB hit? \to (TLB \to CPU)\par
+TLB miss? \to (MEM \to MEM)\par
+
+basata sul concetto di località
+
+** Tempo effettivo di accesso
+
+(pag 363)
+cerchiamo di valutare il tempo effettivo di accesso,
+
+	* supponiamo che la ricerca associativa
+          richieda \epsilon unità di tempo.
+	* si assuma che il ciclo di memoria sia 1\mu s
+	* Hit ratio
+	* Tasso di successi \alpha
+
+il tempo effettivo di accesso
+\[2 + \epsilon - \alpha\]
+
+** Protezione della memoria
+
+viene aggiunto nella tabella delle pagine anche un bit
+per sapere se quella associazione è valida o meno,
+utile per la gestione della memoria virtuale, valido
+quindi quell'associazione fa parte degli indirizzi
+logici del processore, se è marcato invalid allora un
+accesso a quella pagina da un errore.\par
+
+In genere un processo non usa tutta la memoria
+disponibile, non è necessario che il sistema faccia una
+tabella per ogni coso possibile.
+vuoi sei pagine? io posso dartene 8 alla volta, quindi
+te ne do 8 ma le ultime 2 sono invalide, così ne hai 6.
+In questo modo il sistema può allocare solo a botte di
+potenze di 2 senza rompersi la minchia
+
+** Pagine condivise
+	* Codice condiviso
+	* Dati condivisi
+	* Codice e dati privati
+
+puoi avere anche parti private
+
+diciamo intel IA32
+	* 20 bit per indicare una pagine/frame
+	* 12 bit per offset
+	* ogni elemento della tabella delle pagine usa
+          4 byte
+Ogni processi userebbe 4MB byte per la sua tabella, NO!
+
+	* Paginazione gerarchica
+	* Tabella delle pagine di tipo hash
+	* Paginazione invertita
+
+*** Paginazinoe gerarchica
+crea un'albero
+
+esempio di tipo di paginazione a due livelli
+indirizzo logico, 32 bit con pagine di 4k, è diviso in
+	* Un numero di pagina di 20 bit
+	* un offset di 12 bit
+
+Quindi in uno schema a 2 livelli ti ritrovi con
+Una tabella delle pagine si va a fare in culo
+	* Outer page table
+	* page table
+	* memory
+
+schema di traduzione degli indirizzi diventa quindi a
+due livelli,\par
+
+indirizzo logico \to outer page \to page of page table
+\to memoria.\par
+
+qui peggiora ulteriormente la situazione con gli
+accessi alla memoria.
+
+*** Tabella delle pagine di tipo hash
+
+La tabella della boh
+
+*** Tabella delle pagine invertita
+
+Una sola tabella delle pagine per tutti i processi,
+ogni riga di questa tabella associa un frame, e in ogni
+riga viene indicato il processo che sta usando quel
+frame e la pagine che viene mappata su quel frame.\par
+
+Quando abbiamo il nostro indirizzo logico abbiamo anche
+il pid e tramite questo si cerca qual'è il frame, il
+numero della riga, che sta facendo boh. E usando
+questo, mettendoci l'offset, fa boh.\par
+
+Il vantaggio è che abbiamo una sola tabella per tutti,
+così non ho una tabella delle pagine per processo, però
+il problema di questo processo è che è difficile
+condividere, ovviamente in questo caso [...].\par
+
+** es. Segmentazione intel pentium
+/It's all about the pentiums, baby!/\par
+
+mettiamo la segmentazione, e POI, la paginazione
+
+
+* Memoria Virtuale
+abbiamo la memoria virtuale, memory map decide quale
+parte sta nella memoria fisica e quale parte sta nel
+backing store.
+
+	* Necessaria meno memoria
+	* Aumenta il grado di multiprogrammazione
+
+paginza necessaria  \to si referenzia
+	* 
+	* 
+	* 
+
+Bit valido-invalido\par
+
+Tabella delle pagine con alcune pagine non in
+memoria\par
+
+Page fault\par
+
+Passi nella gestione del page fault\par
+	* FIFO
+	* LRU
+	* Varianti di LRU
+
+** Sostituzione delle pagine
+
+in generale aumentando il numero di frame diminuisci il
+numero di sticazzi
+
+*** Sostituzione FIFO
+
+cosa togliere dalla memoria? Quello che è stato messo
+per primo in memoria
+
+
+*** Sostituzione LRU
+
+cosa togliere dalla memoria? Quello che è stato usato
+meno di recente\par
+/LOCALITAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA/\par
+/CREDOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOO/\par
+
+*** Anomalia di Belady
+Esistono casi nel quale aumentando il numero di frame
+hai più page fault (ALABAMAAAAAA)
+
+*** Sostituzione ottimale
+
+Qual'è il caso migliore in assoluto?
+Sostituire la pagina che verrà usata il meno
+recentemente in futuro, non possiamo essere nostradamus
+ma questo caso impossibile aiuto come riferimento
+teorico oltre il quale sappiamo di non poter andare\par
+
+*** Scelta LRU
+
+Scegli la pagina usata meno di recente, la pagina che
+non è stata usata da più tempo, criterio simile a
+quello ottimale ma guarda nel passato invece che nel
+futuro perchè non siamo nostradamus.\par
+
+Implementazoine della LRU non è semplice, contatore, a
+ogni uso di una pagina associo contatore a pagina e
+contatore ++, quando devo togliere una pagina tolgo
+quella con contatore minore di tutti\par
+
+Un'altra idea sarebbe usare uno stack, ma sta
+descrivendo una coda, a ogni uso della pagine la sposto
+in cima allo stack, in fondo ci sta la meno usata.\par
+
+si possono avere soluzioni ibride in cui un bit indica
+se una pagina è stata usata o no negli ultimi tot
+accessi.\par
+
+Usando questa informazione si può avere una circa LRU
+
+
+*** Thrashing
+la gestione della memoria virtuale può portare il
+sistema a una situazione di non utilizzabile
+
+quando tutti i processi generano page fault molto di
+frequente, il sistema è sempre in attesa di una pagina
+dal disco.\par
+
+Eight Megabytes And Constant Swapping\par
+
+Aumentando il grado di multiprogrammazione hai un po'
+che aumenta l'utilizzo della cpu, dopo un po' inizi ad
+avere TANTI cazzo di page fault e vai in thrashing.\par
+
+Il thrashing è Constant Swapping, come si può risolvere
+questo?, un modo per risolverlo è l'*algoritmo della
+sostituzione locale*, un processo che chiede di fare
+swap è invitato ad attaccarsi al cazzo, se ad esempio
+hai un solo processo che sta facendo Eight Megabytes
+And Constant Swapping e quello fa thrashing, emacs, vai
+a fare in culo.\par
+
+Il thrashing si può evitare se un processo ha in
+memoria tutti i frame di cui ha bisogno al momento, il
+sui *working set*, che è quanto serve a un processo per
+avere pochi page fault\par
+
+La dimensione del working set cambia nel tempo
+ok, ora non mi serve molto, ok ora dovrei copiare sto
+file da 10M in un buffer in memoria per modificarlo.
+
+Non si ha trashing se la somma delle dimensioni di
+tutti i working set rientra nella dimensione della
+memoria. Se arriva un processo che inizia a chiedere
+troppa memoria allora il processo viene momentaneamente
+/"messo a dormire"/.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+

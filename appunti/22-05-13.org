@@ -1,0 +1,58 @@
+* Head
+** Second
+
+#+BEGIN_SRC java
+    public interface Tavolo {
+	  void getBacchette(int idFilosofo);
+  throws InterruptedException;
+	  void releaseBacchette (int idFilosofo);
+    }
+#+END_SRC
+
+#+BEGIN_SRC java
+     public class SemaphoreTavolo{
+         Semaphore[] bacchette;
+         Semaphore(int nFilosofi){
+         bacchette = new Semaphore[nFilosofi]
+         for(int i = 0; i<bacchette.length; i++){
+             bacchette[i] = new Semaphore(1);
+             //inizialmente disponibile
+         }
+#+END_SRC
+
+* Monitor
+monitor astrazoine per evitare scazzi dovuti a semafori
+- Monitor che gestische la stampante
+- Monitor che gestische questa risorsa
+- Monitor che gestische quest'altra
+
+ok, che cazzo è un mutex?
+
+gestione può dipendere da fattori
+"sta coda è piena sta, cosa è coso..."
+all'interno del monitor puoi fare wait e signal
+
+wait, il processo che invoca l'operazine viene sospeso
+e implicitamnte lascia il monitor e permette ad altri
+procesi di effettuare operazioni sul monitor
+
+problema dei 5 filosofi senza stallo con i monitor
+
+* Monitor con semafori
+
+vediamo in java
+in java i reentrant clock sono simili
+
+introdotto in java come linguaggio, definiscono i metodi
+=synchronized=
+viene associato un mutex all'oggetto
+java fa in modo di far eseguire solo un metodo
+
+caso particoloare sono i metodi statici sincronizzati,
+in questo caso il lock viene associato alla classe, e
+non ha niente a che fare con sticazzi
+
+per esempio in java abbiamo sharedCounter, 
+#+BEGIN_SRC java
+
+#+END_SRC
