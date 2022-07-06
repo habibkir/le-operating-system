@@ -1,0 +1,248 @@
+* Bla bla bla multithreading
+Si perdonino i miei tentativi a sembrare divertente
+
+** Peterson
+
+il thread cambia la varaibile turno e dice che è interessato, ogni thread ha il suo
+cosino nell'array per dire "interessato", quindi non è possibile che un altro thread
+lo cambii 
+
+prima della parte col wait il processo setta la variabile "turno" per dire che appena
+l'altro ha fatto e/o se ha già fatto allora è il suo turno, mentre l'altro è ancora
+interessato ed è il mio turno poi allora aspetto, altrimento se l'altro ha detto
+"appena finisci è il mio turno" e/o se l'altro non è interessato allora sticazzi 
+
+considera la variabile turn come "quando/se ha l'altro fatto tocca a $(turn)"
+codice riadattato da pagina 115 del pdf coi procioni
+
+#+BEGIN_SRC C
+  #define FALSE 0
+  #define TRUE 1
+  #define N 2 /* numero processi */
+
+  int quando_ha_fatto_tocca_a; 
+  int interessato[N];
+
+  /*quando un processo vuole entrare chiama questa con il suo ID*/
+  void entra_critica(int processo) {
+      int altro_processo = 1 - processo;
+      interessato[processo] = TRUE;
+      quando_ha_fatto_tocca_a = processo;
+      while(interessato[altro_processo] &&
+	    quando_ha_fatto_tocca_a == processo)
+	  /* no op, non fa un cazzo, aspetta */;
+  }
+
+  /*quando il processo esce dalle parte critica chiama questa con il suo ID*/
+  void esci_critica (int processo) {
+      interessato[processo] = FALSE;
+  }
+#+END_SRC
+
+** Problemi col busy waiting
+
+Uno dei problemi principali del busy waiting, come dice anche il nome, è che il
+processo sta lì a fare robe e usare CPU e risorse per tutti quei  =while= e ====
+senza arrivare bene o male a un cazzo, la cosa non è molto efficiente.
+
+Un altro problema si verifica quando abbiamo processi con priorità diverse, prendiamo
+una situazione normalissima, c'è un processo ad alta priorità, se vuoi chiamalo H, e
+gli serve una cosa da un processo a bassa priorità, chiamalo L.
+
+H per aspettare fa busy waiting, quindi sta eseguendo cose inutili per passare il
+tempo
+
+lo scheduler vede sta cosa, c'è H che deve fare cose, e c'è L che deve fare cose, a
+livello base base base possiamo vedere parte dello scheduler come
+
+#+BEGIN_SRC C
+  int vedi_se_far_partire(processo) {
+      if(trovi_coso_con_più_priorità_di(processo))
+	  return SE_NE_VADA_A_FARE_IN_CULO;
+      return OK;
+#+END_SRC
+
+quindi finchè H ha da fare sto busy waiting L non può fare un cazzo, ma finchè L non
+si decide ad arrivare con quella risorsa H non può fare un cazzo apparte busy
+waiting, siamo arrivati al cosiddetto *essere nella merda*, o, per essere più precisi, a una sottocategoria di questo detta *problema dell'inversione di priorità* 
+
+per risolvere questa cosa potremo fare che, invece di busy waiting, il processo (o il
+thread, vale per entrambi) se ne vada in standby, o comunque a fanculo, finchè non ha
+motivo e/o modo di tornare in esecuzione, in questo caso potremo riscrivere peterson
+in quest'altro modo (un po' di robe tirate qui, questo è per fare da esempio)
+
+#+BEGIN_SRC C
+  #define FALSE 0
+  #define TRUE 1
+  #define N 2 /* numero processi */
+
+  int quando_ha_fatto_tocca_a; 
+  int interessato[N];
+
+  /*quando un processo vuole entrare chiama questa con il suo ID*/
+  void entra_critica(int processo) {
+      int altro_processo = 1 - processo;
+      interessato[processo] = TRUE;
+      quando_ha_fatto_tocca_a = processo;
+      if(interessato[altro_processo] && quando_ha_fatto_tocca_a == processo) {
+	  svegliami_quando_hai_fatto();
+      }
+  }
+
+  /*quando il processo esce dalle parte critica chiama questa con il suo ID*/
+  void esci_critica (int processo) {
+      interessato[processo] = FALSE;
+      ho_fatto();
+      /* sveglia quelli che stavano aspettando che facesse, se c'erano */
+  }
+#+END_SRC
+
+=svegliami_quando_hai_fatto()= e =ho_fatto()= comunicheranno con cosi di basso
+livello del sistema, da qui in poi il libro usa =sleep()= e =wakeup()= che funzionano
+più o meno come questi ma hanno entrambi un parametro processo e sono chiamate di
+sistema, abbastanza ipotetiche ma ogni sisitema coi thread ha chiamate equivalenti. 
+
+** Prodoocer and Consoomer
+
+Un altro classico problema usato dalla gente che spiega il multithreading, ho un
+thread/processo/coso che va avanti che /crea/ una risorsa, e un coso/thread che la
+/consuma/.
+
+Per rendere l'idea in modo meno astratto facciamo che ho
+#+BEGIN_SRC bash
+  ls -l | grep slide_sistemi_*.pdf
+#+END_SRC
+qui il processo =ls= sta /creando/ una lista dei file e il processo =grep= la sta
+/usando/ / /consumando/.
+
+visto che non so come funzionano i pipe torniamo a livello un po' più astratto e un
+po' più "mi inventerò qualche cazzata"
+
+=ls= metterà le righe di sta lista da qualche parte a cui =grep= possa accedere, ed è
+probabilie che il sistema abbia allocato una quantità di spazio non infinito da usare
+come "qualche parte", ci ritroviamo con 2 possibili problemi nell'uso di questa
+"qualche parte" che da ora in poi chiamaremo sto =buffer= perché "qualche parte" è
+troppo lungo da dire costantemente.
+
+ - il =buffer= è pieno e =ls= non può metterci altre righe
+ - il =buffer= è vuoto e =grep= non può prendere altre righe
+
+allora possiamo fare che oltre al =buffer= abbiamo una variabile condivisa
+=righe_nel_buffer=, quindi avremo.
+
+#+BEGIN_SRC C
+  #define MAX_RIGHE_NEL_BUFFER 100
+
+  sticazzi_t ls_impl_boh() {
+      char* nuova_riga = prossima_riga();
+      if(righe_nel_buffer == MAX_RIGHE_NEL_BUFFER)
+	  svegliami_quando_hai_fatto();
+      inserisci_riga(nuova_riga);
+      righe_nel_buffer++;
+      if(righe_nel_buffer == 1)
+	  sveglia_quello_stronzo_di(grep);
+      /* era al minimo, quindi grep avrà visto 0 e starà dormendo */
+  }
+
+  sticazzi_t grep_impl() {
+      if(righe_nel_buffer == 0)svegliamo_quando_hai_fatto();
+      riga = prendi_riga();
+      righe_nel_buffer--;
+      if(righe_nel_buffer == MAX_RIGHE_NEL_BUFFER - 1)
+	  sveglia_quello_stronzo_di(ls);
+      /* era al massimo, quindi ls avrà visto
+       ,* MAX_RIGHE_IN_BUFFER e starà dormendo */
+      usa_riga(riga);
+  }
+#+END_SRC
+
+oppure no?
+qui stiamo commettendo il classico errore di accedere risorse condivise
+(=righe_nel_buffer= e il =buffer=) senza aver detto all'altro processo "guarda, la
+sto usado, io non scazzarci", quindi l'altro pu l'altro arriva a scazzarci, e appena
+arriva so' cazzi, noti anche come *race condition* 
+
+*** Esempio di andamento a puttane
+come esempio di cazzi mettiamo che =grep= vede che non ci sono righe, lo scheduler è
+uno stronzo e passa il controllo a =ls= prima che grep dica =svegliami_dopo=
+ora =ls= si mette a inserire righe, =righe_nel_buffer == 0= quindi dovrebbe svegliare
+quello stronzo di =grep=, manda il segnale ma grep non sta dormendo, quindi non
+cambia un cazzo.
+
+quando il controllo torna a =grep=, che stava per andare a nanna, =grep= va a nanna,
+ignorando bellamente il segnale di sveglia, poi il controllo tornerà a =ls= che
+senza =grep= riempirà tutto il buffer, e andrà a nanna.
+
+sia =grep= che =ls= stanno dormendo, e ora non li sveglia più nessuno, cazzo.
+
+Una soluzione a questo tipo di problema sarebbe avere un bit di
+=mi_sa_non_dovrest_dormire= a cui va il segnale di =svegliati= se =grep= è ancora
+sveglio quando gli arriva lo =svegliati=, un solo bit è un po' limitato però, e non
+basterebbe per più producer, potremmo mettere più bit, magari 2, 4, 8... ma la cosa
+non farebbe altro che rimandare il problema, forse una cosa migliore da fare sarebbe
+che stiamo usando quest'esempio per introdurre il capitolo sui =Semaphore=, quindi
+
+
+* Il capitolo sui Semaphore
+
+ma se invece di usare un bit per "svegliataggine" la rappresentassi direttamente come
+un cazzo di intero? credo che (2^31 - 1) "bit" bastino e avanzino
+
+usare un intero per dire "quanto devi svegliarti"
+l'operazione di alzare e abbassare deve essere atomica
+
+azioni sui semafori up e down (aquire e release in javanese)
+down vede se può abbassare questa quantità
+se la quantità è 0 abbiamo 0 "svegliataggine" e il processo si addormenta
+altrimenti la abbassa e si porta dietro la svegliataggine in esecuzione
+
+up la chiami quando hai finito di fare e vuoi rendere la tua svegliataggine al mondo.
+un thread a caso se la prende e va avanti con la sveglaitaggine resa al mondo
+
+un modo un po' più belliniano e magari più chiaro (stranamente) della "banca di
+sveglaitaggine" sarebbe vedere il semaphore come quante risorse sono disponibili, il
+risultato è lo stesso
+
+down vede se posso prendere risorse, posso? prendile
+up rilascia risorse, e se qualcuno la voleva se la prende
+
+visto che ogni thread prende e rilascia "roba", e che serve sempre abbastanza "roba"
+per porter far partire un thread, è possibile vedere sta roba sia come
+"svegliataggine" che come "risorse da usare" perché tanto le risorse sono la
+svegliataggine di sti thread, la loro /raison d'etre/ ( o /ratio essendi/, dipende da
+come vuoi far finta di essere figo).
+
+** Prodoocer e Consoomer con i Semaphore
+
+hai un mutex perchè c'è comunque una regione critica dove deve starci *UN SOLO TIZIO
+ALLA VOLTA*, hai un semaphore per la svegliataggine dei prodoocer, che è quante celle
+vuote ti ritrovi, e  hai un semaphore per la svegliataggine dei consoomer, che è
+quante celle piene ti ritrovi
+
+fai finta che lo abbia implementato qui e che sia venuto molto molto figo
+anche troppo figo
+
+e comunque stai attento che esistono i *DEADLOCK*
+
+
+** BLA BLA BLA Monitor
+
+un monitor può essere visto come una classe con metodi sincronizzati ante tante cazzo
+di litteram, lo hanno proposto nel '74, minchia...
+un monitor e come funziona è un construttuo del linguaggio, in altre parole, sono
+cazzi del compiler.
+
+È fatto in modo che *SOLO UN METODO* del monitor possa essere eseguito alla volta,
+(metodo synchronized, per l'appunto), questo di solito è implementato internamente
+con dei mutex, ma visto che evitare deadlock ora sono cazzi del compiler è molto più
+facile da usare senza conseguenze impreviste.
+
+
+** I procioni avevano messagge passing ma non credo che lo abbia fatto
+Ok le mailbox si erano fatte, credo, con molti meno dettagli però, credo.
+il rendevous non è molto flessibile.
+
+
+* Problemi classici
+
+** Filosofi a cena
