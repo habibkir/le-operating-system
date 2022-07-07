@@ -1,0 +1,24 @@
+* IO
+
+bla bla buffering è perché il bus dati potrebbe andare di merda
+
+** DMA
+
+Quando si fa l'io da un file vi è però spesso un problema non trascurabile, l'io è
+lentissimo, e ai file piace spesso essere dei cazzo di giganti.
+
+Il problema non viene strettamente dal fatto che si abbia un file gigante, viene
+principalmente dal fatto che la CPU dovrebbe fare una quantità immane di IO per sto
+file, quando avrebbe decismamente di meglio da fare, per ovviare a ciò si usa il
+cosiddetto Direct Memory Access (DMA).
+
+questa procedura è gesitita dal controller DMA, il controller DMA è fatto per poter
+fare tutto l'io che potremmo fare con la CPU mentre la CPU fa cose più produttive,
+questa procedura si divide in tre parti
+
+ - la CPU da al controller DMA le informazioni sulla richiesta, e dice al disco che
+   vuole leggere
+ - il controller DMA fa mettere i contenuti del disco sulla sulla memoria principale
+   (sulla RAM)
+ - il controller DMA manda un interrupt alla CPU per dirle che ha finito con l'io e
+   che il blocco è stato letto
